@@ -35,10 +35,8 @@ public class ZipCodecReducer extends Reducer<Text, Text, Text, Text> {
         context.getCounter(COUNT_GROUP, "reduce read groups").increment(1);
         // context.write(new Text(lineNumber), new Text(fileNumber));
 
-        List<String> fileNumbers = new ArrayList<>();
-        for (Text value : values) {
-            fileNumbers.add(value.toString());
-        }
+        final List<String> fileNumbers = new ArrayList<>();
+        values.forEach(value -> fileNumbers.add(value.toString()));
 
         context.write(key, new Text(StringUtils.join(fileNumbers, this.outputArraySeparator)));
         context.getCounter(COUNT_GROUP, "reduce write records").increment(1);
