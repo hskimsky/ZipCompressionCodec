@@ -39,7 +39,7 @@ public abstract class ZipCompressionCodec implements CompressionCodec {
 
         @Override
         public void resetState() throws IOException {
-            ((ZipOutputStream) this.out).finish();
+            ((ZipOutputStream) this.out).closeEntry();
         }
     }
 
