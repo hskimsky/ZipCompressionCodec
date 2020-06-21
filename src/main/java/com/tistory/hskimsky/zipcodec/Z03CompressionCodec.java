@@ -7,8 +7,8 @@ package com.tistory.hskimsky.zipcodec;
  * @since 2.1.0
  */
 public class Z03CompressionCodec extends ZipCompressionCodec {
-    @Override
-    public String getDefaultExtension() {
-        return ".Z03";
-    }
+  @Override
+  public String getDefaultExtension() {
+    return ".Z03";
+  }
 }

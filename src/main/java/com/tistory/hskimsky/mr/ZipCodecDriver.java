@@ -1,91 +1,104 @@
 package com.tistory.hskimsky.mr;
 
+import com.tistory.hskimsky.zipcodec.SplittableZipInputFormat;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ZipCodec test driver.
  *
- * @author Haneul, Kim
+ * @author HaNeul, Kim
+ * @since 0.1
  */
 public class ZipCodecDriver extends Configured implements Tool {
 
-    public static void main(String[] args) throws Exception {
-        if (args.length < 2) {
-            printUsage();
-            System.exit(1);
-        }
+  private static final Logger logger = LoggerFactory.getLogger(ZipCodecDriver.class);
 
-        int exitCode = ToolRunner.run(new ZipCodecDriver(), args);
-        System.exit(exitCode);
+  public static void main(String[] args) throws Exception {
+    if (args.length < 2) {
+      printUsage();
+      System.exit(1);
     }
 
-    private static void printUsage() {
-        System.err.println("yarn jar <thisJar> " + ZipCodecDriver.class.getName() + " <inputPath> <outputPath> [<force>]");
+    int exitCode = ToolRunner.run(new ZipCodecDriver(), args);
+    System.exit(exitCode);
+  }
+
+  private static void printUsage() {
+    System.err.println("yarn jar <thisJar> " + ZipCodecDriver.class.getName() + " <inputPath> <outputPath> [<force>]");
+  }
+
+  @Override
+  public int run(String[] args) throws Exception {
+    Path inputPath = new Path(args[0]);
+    Path outputPath = new Path(args[1]);
+    boolean force = args.length > 2 && Boolean.parseBoolean(args[2]);
+
+    Configuration conf = this.newConf();
+    FileSystem fs = outputPath.getFileSystem(conf);
+    if (force && fs.exists(outputPath)) {
+      fs.delete(outputPath, true);
+      System.out.println("deleted " + outputPath);
     }
 
-    @Override
-    public int run(String[] args) throws Exception {
-        Path inputPath = new Path(args[0]);
-        Path outputPath = new Path(args[1]);
-        boolean force = args.length > 2 ? Boolean.parseBoolean(args[2]) : false;
+    Job job = Job.getInstance(conf, ZipCodecDriver.class.getSimpleName() + "_test");
+    job.setJarByClass(ZipCodecDriver.class);
 
-        Configuration conf = this.newConf();
+    FileInputFormat.addInputPath(job, inputPath);
+    FileOutputFormat.setOutputPath(job, outputPath);
+    job.setInputFormatClass(SplittableZipInputFormat.class);
+    job.setOutputFormatClass(TextOutputFormat.class);
 
-        Job job = Job.getInstance(conf, ZipCodecDriver.class.getSimpleName() + "_test");
+    // mapper
+    job.setMapperClass(ZipCodecMapper.class);
+    job.setMapOutputKeyClass(Text.class);
+    job.setMapOutputValueClass(Text.class);
 
-        FileInputFormat.addInputPath(job, inputPath);
-        FileOutputFormat.setOutputPath(job, outputPath);
-        job.setInputFormatClass(TextInputFormat.class);
-        job.setOutputFormatClass(TextOutputFormat.class);
+    // partitioner
+    job.setPartitionerClass(ZipCodecPartitioner.class);
 
-        // mapper
-        job.setMapperClass(ZipCodecMapper.class);
-        job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(Text.class);
+    // reducer
+    job.setReducerClass(ZipCodecReducer.class);
+    job.setNumReduceTasks(3);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(Text.class);
 
-        // partitioner
-        job.setPartitionerClass(ZipCodecPartitioner.class);
+    boolean completion = job.waitForCompletion(true);
 
-        // reducer
-        job.setReducerClass(ZipCodecReducer.class);
-        job.setNumReduceTasks(3);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
+    System.out.println("output path is " + outputPath);
 
-        boolean completion = job.waitForCompletion(true);
+    return completion ? 0 : 1;
+  }
 
-        System.out.println("output path is " + outputPath);
+  private Configuration newConf() {
+    Configuration conf = new Configuration();
 
-        return completion ? 0 : 1;
-    }
+    conf.set("fs.defaultFS", "hdfs://nn");
+    conf.set("fs.hdfs.impl", DistributedFileSystem.class.getName());
 
-    private Configuration newConf() {
-        Configuration conf = new Configuration();
+    conf.setDouble(MRJobConfig.COMPLETED_MAPS_FOR_REDUCE_SLOWSTART, 0.9);
+    conf.set(MRJobConfig.QUEUE_NAME, "default");
+    conf.setInt(MRJobConfig.MAP_MEMORY_MB, 1024);// default 1024
+    conf.set(MRJobConfig.MAP_JAVA_OPTS, "-Xmx820m");
+    conf.setInt(MRJobConfig.REDUCE_MEMORY_MB, 1024);// default 1024
+    conf.set(MRJobConfig.REDUCE_JAVA_OPTS, "-Xmx820m");
+    conf.setInt(MRJobConfig.IO_SORT_MB, 512);
 
-        conf.set("fs.defaultFS", "hdfs://nn");
-        conf.set("fs.hdfs.impl", DistributedFileSystem.class.getName());
+    conf.set(TextOutputFormat.SEPARATOR, "^");
 
-        conf.setDouble(MRJobConfig.COMPLETED_MAPS_FOR_REDUCE_SLOWSTART, 0.9);
-        conf.set(MRJobConfig.QUEUE_NAME, "default");
-        conf.setInt(MRJobConfig.MAP_MEMORY_MB, 512);// default 1024
-        conf.set(MRJobConfig.MAP_JAVA_OPTS, "-Xmx512m");
-        conf.setInt(MRJobConfig.REDUCE_MEMORY_MB, 512);// default 1024
-        conf.set(MRJobConfig.REDUCE_JAVA_OPTS, "-Xmx512m");
-
-        conf.set(TextOutputFormat.SEPERATOR, "-Xmx512m");
-
-        return conf;
-    }
+    return conf;
+  }
 }
