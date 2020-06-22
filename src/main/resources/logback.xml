@@ -16,7 +16,7 @@
   <logger name="com.jayway.jsonpath" level="WARN"/>
   <logger name="com.zaxxer.hikari" level="INFO"/>
   <logger name="ch.qos.logback" level="ERROR"/>
-  <logger name="org.apache.hadoop" level="DEBUG"/>
+  <logger name="org.apache.hadoop" level="ERROR"/>
 
   <root level="DEBUG">
     <appender-ref ref="CONSOLE"/>
