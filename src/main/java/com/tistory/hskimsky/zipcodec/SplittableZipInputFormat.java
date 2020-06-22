@@ -28,7 +28,7 @@ public class SplittableZipInputFormat extends FileInputFormat<Text, Text> {
 
   @Override
   public RecordReader<Text, Text> createRecordReader(InputSplit split, TaskAttemptContext context) throws IOException, InterruptedException {
-    ZipEntryReader zipEntryReader = new ZipEntryReader();
+    SplittableZipEntryReader zipEntryReader = new SplittableZipEntryReader();
     zipEntryReader.initialize(split, context);
     return zipEntryReader;
   }

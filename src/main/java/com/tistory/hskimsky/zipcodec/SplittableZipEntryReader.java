@@ -14,7 +14,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
 import java.io.IOException;
 
-public class ZipEntryReader extends RecordReader<Text, Text> {
+public class SplittableZipEntryReader extends RecordReader<Text, Text> {
 
   public static final String BUFFER_SIZE = "mapreduce.input.zipentryreader.buffer.size";
 
@@ -28,7 +28,7 @@ public class ZipEntryReader extends RecordReader<Text, Text> {
   private Text key;
   private Text value;
 
-  public ZipEntryReader() {
+  public SplittableZipEntryReader() {
   }
 
   @Override
